@@ -1,3 +1,4 @@
+
 package com.rasayili.sms.ui.navigation
 
 import androidx.compose.runtime.Composable
@@ -9,6 +10,7 @@ import androidx.navigation.navArgument
 import com.rasayili.sms.ui.screens.ChatDetailScreen
 import com.rasayili.sms.ui.screens.HomeScreen
 import com.rasayili.sms.ui.screens.NewMessageScreen
+import com.rasayili.sms.ui.screens.SettingsScreen
 import com.rasayili.sms.ui.viewmodel.SmsViewModel
 
 @Composable
@@ -18,31 +20,71 @@ fun AppNavGraph(
     onRequestPermissions: () -> Unit,
     onRequestDefaultRole: () -> Unit
 ) {
-    NavHost(navController = navController, startDestination = "home") {
+    NavHost(
+        navController = navController,
+        startDestination = "home"
+    ) {
         composable("home") {
             HomeScreen(
                 viewModel = viewModel,
-                onNavigateToThread = { threadId, address -> navController.navigate("chat/$threadId/$address") },
-                onNavigateToNewMessage = { navController.navigate("newMessage") },
-                onRequestDefaultRole = onRequestDefaultRole
+                onNavigateToThread = { threadId, address ->
+                    navController.navigate("chat/$threadId/$address")
+                },
+                onNavigateToNewMessage = {
+                    navController.navigate("newMessage")
+                },
+                onRequestDefaultRole = onRequestDefaultRole,
+                onNavigateToSettings = {
+                    navController.navigate("settings")
+                }
             )
         }
+
+        composable("settings") {
+            SettingsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         composable(
             route = "chat/{threadId}/{address}",
             arguments = listOf(
-                navArgument("threadId") { type = NavType.LongType },
-                navArgument("address") { type = NavType.StringType }
+                navArgument("threadId") {
+                    type = NavType.LongType
+                },
+                navArgument("address") {
+                    type = NavType.StringType
+                }
             )
         ) { backStackEntry ->
-            val threadId = backStackEntry.arguments?.getLong("threadId") ?: 0L
-            val address = backStackEntry.arguments?.getString("address") ?: ""
-            ChatDetailScreen(threadId = threadId, address = address, viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+            val threadId =
+                backStackEntry.arguments?.getLong("threadId") ?: 0L
+            val address =
+                backStackEntry.arguments?.getString("address") ?: ""
+
+            ChatDetailScreen(
+                threadId = threadId,
+                address = address,
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
+
         composable("newMessage") {
-            NewMessageScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() }, onMessageSent = { threadId, address ->
-                navController.popBackStack()
-                navController.navigate("chat/$threadId/$address")
-            })
+            NewMessageScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onMessageSent = { threadId, address ->
+                    navController.popBackStack()
+                    navController.navigate("chat/$threadId/$address")
+                }
+            )
         }
     }
 }

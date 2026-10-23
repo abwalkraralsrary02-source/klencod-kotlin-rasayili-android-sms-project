@@ -1,3 +1,4 @@
+
 package com.rasayili.sms.ui.screens
 
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +29,8 @@ fun HomeScreen(
     viewModel: SmsViewModel,
     onNavigateToThread: (Long, String) -> Unit,
     onNavigateToNewMessage: () -> Unit,
-    onRequestDefaultRole: () -> Unit
+    onRequestDefaultRole: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val conversations by viewModel.conversations.collectAsState()
     val isDefaultApp by viewModel.isDefaultSmsApp.collectAsState()
@@ -36,7 +39,21 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "رسائلي", fontWeight = FontWeight.Bold, fontSize = 22.sp) },
+                title = {
+                    Text(
+                        text = "رسائلي",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    )
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "الإعدادات"
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -49,7 +66,10 @@ fun HomeScreen(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "كتابة رسالة جديدة")
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "كتابة رسالة جديدة"
+                )
             }
         }
     ) { paddingValues ->
@@ -78,8 +98,13 @@ fun HomeScreen(
                         )
                         Button(
                             onClick = onRequestDefaultRole,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            contentPadding = PaddingValues(
+                                horizontal = 12.dp,
+                                vertical = 4.dp
+                            )
                         ) {
                             Text("تعيين الآن", fontSize = 12.sp)
                         }
@@ -90,8 +115,12 @@ fun HomeScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("ابحث في الرسائل أو جهات الاتصال...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "بحث") },
+                placeholder = {
+                    Text("ابحث في الرسائل أو جهات الاتصال...")
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "بحث")
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -100,19 +129,33 @@ fun HomeScreen(
             )
 
             if (conversations.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "لا توجد رسائل بعد", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "لا توجد رسائل بعد",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    items(items = conversations, key = { it.threadId }) { conversation ->
+                    items(
+                        items = conversations,
+                        key = { it.threadId }
+                    ) { conversation ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onNavigateToThread(conversation.threadId, conversation.address) }
+                                .clickable {
+                                    onNavigateToThread(
+                                        conversation.threadId,
+                                        conversation.address
+                                    )
+                                }
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -122,21 +165,63 @@ fun HomeScreen(
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    val initial = conversation.contactName.firstOrNull()?.toString() ?: "#"
-                                    Text(text = initial, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    val initial =
+                                        conversation.contactName.firstOrNull()
+                                            ?.toString() ?: "#"
+
+                                    Text(
+                                        text = initial,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
                                 }
                             }
+
                             Spacer(modifier = Modifier.width(14.dp))
+
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(text = conversation.contactName, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(text = SimpleDateFormat("hh:mm a", Locale("ar")).format(Date(conversation.timestamp)), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = conversation.contactName,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 16.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Text(
+                                        text = SimpleDateFormat(
+                                            "hh:mm a",
+                                            Locale("ar")
+                                        ).format(Date(conversation.timestamp)),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
+
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = conversation.lastMessage, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                                Text(
+                                    text = conversation.lastMessage,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(
+                                alpha = 0.4f
+                            ),
+                            thickness = 0.5.dp,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
                     }
                 }
             }
