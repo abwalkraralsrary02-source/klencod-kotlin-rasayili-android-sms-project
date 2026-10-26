@@ -1,229 +1,291 @@
-package com.rasayili.sms.data.repository
 
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
+package com.rasayili.sms.ui.screens
+
 import android.provider.ContactsContract
-import android.provider.Telephony
-import android.telephony.SmsManager
-import android.telephony.SubscriptionManager
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.rasayili.sms.data.model.Conversation
-import com.rasayili.sms.data.model.SmsMessage
+import com.rasayili.sms.ui.viewmodel.SmsViewModel
 
-class SmsRepository(private val context: Context) {
-
-    private val contactNames = mutableMapOf<String, String>()
-
-    fun sendSms(
-        phoneNumber: String,
-        message: String,
-        subscriptionId: Int =
-            SubscriptionManager.getDefaultSmsSubscriptionId()
-    ) {
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or
-                PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-
-        val sentIntent = PendingIntent.getBroadcast(
-            context,
-            100,
-            Intent("com.rasayili.sms.SMS_SENT"),
-            flags
-        )
-
-        val deliveredIntent = PendingIntent.getBroadcast(
-            context,
-            101,
-            Intent("com.rasayili.sms.SMS_DELIVERED"),
-            flags
-        )
-
-        @Suppress("DEPRECATION")
-        val smsManager: SmsManager =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                context.getSystemService(SmsManager::class.java)
-                    .createForSubscriptionId(subscriptionId)
-            } else {
-                SmsManager.getDefault()
-            }
-
-        val parts = smsManager.divideMessage(message)
-
-        if (parts.size > 1) {
-            val sentIntents = ArrayList<PendingIntent?>()
-            val deliveredIntents = ArrayList<PendingIntent?>()
-
-            repeat(parts.size) {
-                sentIntents.add(sentIntent)
-                deliveredIntents.add(deliveredIntent)
-            }
-
-            smsManager.sendMultipartTextMessage(
-                phoneNumber,
-                null,
-                parts,
-                sentIntents,
-                deliveredIntents
-            )
-        } else {
-            smsManager.sendTextMessage(
-                phoneNumber,
-                null,
-                message,
-                sentIntent,
-                deliveredIntent
-            )
-        }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    viewModel: SmsViewModel,
+    onNavigateToThread: (Long, String) -> Unit,
+    onNavigateToNewMessage: () -> Unit,
+    onNavigateToContact: (String) -> Unit,
+    onRequestDefaultRole: () -> Unit,
+    onNavigateToSettings: () -> Unit
+) {
+    val conversations by viewModel.conversations.collectAsState()
+    var searchText by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var contacts by remember {
+        mutableStateOf<List<Pair<String, String>>>(emptyList())
     }
 
-    fun getConversations(): List<Conversation> {
-        val conversations = mutableMapOf<Long, Conversation>()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
-        val projection = arrayOf(
-            Telephony.Sms.THREAD_ID,
-            Telephony.Sms.ADDRESS,
-            Telephony.Sms.BODY,
-            Telephony.Sms.DATE,
-            Telephony.Sms.READ
-        )
+    LaunchedEffect(Unit) {
+        viewModel.loadConversations()
+    }
 
-        context.contentResolver.query(
-            Telephony.Sms.CONTENT_URI,
-            projection,
-            null,
-            null,
-            "${Telephony.Sms.DATE} DESC"
-        )?.use { cursor ->
-
-            val threadIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
-            val addressIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-            val bodyIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
-            val dateIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
-            val readIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.READ)
-
-            while (cursor.moveToNext()) {
-                val threadId = cursor.getLong(threadIndex)
-                val address = cursor.getString(addressIndex) ?: continue
-                val body = cursor.getString(bodyIndex) ?: ""
-                val timestamp = cursor.getLong(dateIndex)
-                val isRead = cursor.getInt(readIndex) == 1
-
-                if (!conversations.containsKey(threadId)) {
-                    conversations[threadId] = Conversation(
-                        threadId = threadId,
-                        address = address,
-                        contactName = getContactName(address),
-                        lastMessage = body,
-                        timestamp = timestamp,
-                        unreadCount = if (isRead) 0 else 1,
-                        messageCount = 1
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 1) {
+            val list = mutableListOf<Pair<String, String>>()
+            try {
+                context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER
+                    ),
+                    null,
+                    null,
+                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+                )?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndexOrThrow(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
                     )
+                    val numberIndex = cursor.getColumnIndexOrThrow(
+                        ContactsContract.CommonDataKinds.Phone.NUMBER
+                    )
+                    while (cursor.moveToNext()) {
+                        val name = cursor.getString(nameIndex) ?: continue
+                        val number = cursor.getString(numberIndex) ?: continue
+                        list.add(name to number)
+                    }
                 }
+            } catch (_: Exception) {
             }
-        }
-
-        return conversations.values.sortedByDescending {
-            it.timestamp
+            contacts = list.distinctBy { it.second }
         }
     }
 
-    fun getMessagesForThread(threadId: Long): List<SmsMessage> {
-        val messages = mutableListOf<SmsMessage>()
+    val filteredConversations = conversations.filter {
+        it.contactName.contains(searchText, ignoreCase = true) ||
+            it.address.contains(searchText, ignoreCase = true) ||
+            it.lastMessage.contains(searchText, ignoreCase = true)
+    }
 
-        val projection = arrayOf(
-            Telephony.Sms._ID,
-            Telephony.Sms.THREAD_ID,
-            Telephony.Sms.ADDRESS,
-            Telephony.Sms.BODY,
-            Telephony.Sms.DATE,
-            Telephony.Sms.TYPE,
-            Telephony.Sms.READ
-        )
-
-        context.contentResolver.query(
-            Telephony.Sms.CONTENT_URI,
-            projection,
-            "${Telephony.Sms.THREAD_ID} = ?",
-            arrayOf(threadId.toString()),
-            "${Telephony.Sms.DATE} ASC"
-        )?.use { cursor ->
-
-            val idIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
-            val threadIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
-            val addressIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-            val bodyIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
-            val dateIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
-            val typeIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-            val readIndex =
-                cursor.getColumnIndexOrThrow(Telephony.Sms.READ)
-
-            while (cursor.moveToNext()) {
-                val type = cursor.getInt(typeIndex)
-
-                messages.add(
-                    SmsMessage(
-                        id = cursor.getLong(idIndex),
-                        threadId = cursor.getLong(threadIndex),
-                        address = cursor.getString(addressIndex) ?: "",
-                        body = cursor.getString(bodyIndex) ?: "",
-                        timestamp = cursor.getLong(dateIndex),
-                        isSent = type == Telephony.Sms.MESSAGE_TYPE_SENT,
-                        isRead = cursor.getInt(readIndex) == 1
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "رسائلي",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 23.sp
                     )
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "الإعدادات"
+                        )
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onNavigateToNewMessage) {
+                Icon(Icons.Default.Add, contentDescription = "رسالة جديدة")
+            }
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                    },
+                    label = { Text("المحادثات") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = {
+                        Icon(Icons.Default.Person, contentDescription = null)
+                    },
+                    label = { Text("جهات الاتصال") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = {
+                        selectedTab = 2
+                        onNavigateToSettings()
+                    },
+                    icon = {
+                        Icon(Icons.Default.Settings, contentDescription = null)
+                    },
+                    label = { Text("الإعدادات") }
                 )
             }
         }
-
-        return messages
-    }
-
-    private fun getContactName(phoneNumber: String): String {
-        contactNames[phoneNumber]?.let { return it }
-
-        try {
-            val uri = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(phoneNumber)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("ابحث هنا...") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                },
+                singleLine = true
             )
 
-            context.contentResolver.query(
-                uri,
-                arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
-                null,
-                null,
-                null
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val name = cursor.getString(0)
-
-                    if (!name.isNullOrBlank()) {
-                        contactNames[phoneNumber] = name
-                        return name
+            when (selectedTab) {
+                0 -> {
+                    if (filteredConversations.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("لا توجد محادثات حتى الآن")
+                        }
+                    } else {
+                        LazyColumn {
+                            items(
+                                items = filteredConversations,
+                                key = { it.threadId }
+                            ) { conversation ->
+                                ConversationRow(
+                                    conversation = conversation,
+                                    onClick = {
+                                        onNavigateToThread(
+                                            conversation.threadId,
+                                            conversation.address
+                                        )
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
-            }
-        } catch (_: SecurityException) {
-            // إذن جهات الاتصال غير ممنوح
-        } catch (_: Exception) {
-            // تعذر البحث عن الاسم
-        }
 
-        return phoneNumber
+                1 -> {
+                    val filteredContacts = contacts.filter {
+                        it.first.contains(searchText, ignoreCase = true) ||
+                            it.second.contains(searchText, ignoreCase = true)
+                    }
+                    LazyColumn {
+                        items(filteredContacts) { contact ->
+                            ListItem(
+                                headlineContent = { Text(contact.first) },
+                                supportingContent = { Text(contact.second) },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Default.Person,
+                                        contentDescription = null
+                                    )
+                                },
+                                modifier = Modifier.clickable {
+                                    onNavigateToContact(contact.second)
+                                }
+                            )
+                            HorizontalDivider()
+                        }
+                    }
+                }
+
+                else -> {
+                    ListItem(
+                        headlineContent = { Text("الإعدادات") },
+                        supportingContent = {
+                            Text("إعدادات تطبيق رسائلي")
+                        },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier.clickable {
+                            onNavigateToSettings()
+                        }
+                    )
+                    ListItem(
+                        headlineContent = {
+                            Text("تعيين كتطبيق الرسائل الافتراضي")
+                        },
+                        modifier = Modifier.clickable {
+                            onRequestDefaultRole()
+                        }
+                    )
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun ConversationRow(
+    conversation: Conversation,
+    onClick: () -> Unit
+) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = conversation.contactName.ifBlank {
+                    conversation.address
+                },
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        supportingContent = {
+            Text(text = conversation.lastMessage, maxLines = 1)
+        },
+        leadingContent = {
+            Surface(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = conversation.contactName.firstOrNull()
+                            ?.uppercase() ?: "#",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            Text(
+                text = android.text.format.DateFormat.format(
+                    "dd/MM",
+                    conversation.timestamp
+                ).toString(),
+                style = MaterialTheme.typography.labelSmall
+            )
+        },
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+    HorizontalDivider()
 }
