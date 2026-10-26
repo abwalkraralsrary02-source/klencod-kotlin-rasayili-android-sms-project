@@ -12,27 +12,72 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class SmsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = SmsRepository(application.applicationContext)
-    private val _conversations = MutableStateFlow<List<Conversation>>(emptyList())
-    val conversations: StateFlow<List<Conversation>> = _conversations.asStateFlow()
-    private val _currentThreadMessages = MutableStateFlow<List<SmsMessage>>(emptyList())
-    val currentThreadMessages: StateFlow<List<SmsMessage>> = _currentThreadMessages.asStateFlow()
-    private val _isDefaultSmsApp = MutableStateFlow(false)
-    val isDefaultSmsApp: StateFlow<Boolean> = _isDefaultSmsApp.asStateFlow()
-    private val _hasPermissions = MutableStateFlow(false)
-    val hasPermissions: StateFlow<Boolean> = _hasPermissions.asStateFlow()
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    fun onDefaultSmsAppStatusChanged(isDefault: Boolean) { _isDefaultSmsApp.value = isDefault }
-    fun onPermissionsResult(granted: Boolean) { _hasPermissions.value = granted }
-    fun checkPermissions(granted: Boolean) { _hasPermissions.value = granted }
-    fun setSearchQuery(query: String) { _searchQuery.value = query }
-    fun loadConversations() { viewModelScope.launch { _conversations.value = repository.getConversations() } }
-    fun loadMessagesForThread(threadId: Long) { viewModelScope.launch { _currentThreadMessages.value = repository.getMessagesForThread(threadId) } }
-    fun sendSms(address: String, body: String, subscriptionId: Int? = null) {
+    private val repository = SmsRepository(application.applicationContext)
+
+    private val _conversations =
+        MutableStateFlow<List<Conversation>>(emptyList())
+    val conversations: StateFlow<List<Conversation>> =
+        _conversations.asStateFlow()
+
+    private val _currentThreadMessages =
+        MutableStateFlow<List<SmsMessage>>(emptyList())
+    val currentThreadMessages: StateFlow<List<SmsMessage>> =
+        _currentThreadMessages.asStateFlow()
+
+    private val _isDefaultSmsApp = MutableStateFlow(false)
+    val isDefaultSmsApp: StateFlow<Boolean> =
+        _isDefaultSmsApp.asStateFlow()
+
+    private val _hasPermissions = MutableStateFlow(false)
+    val hasPermissions: StateFlow<Boolean> =
+        _hasPermissions.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> =
+        _searchQuery.asStateFlow()
+
+    fun onDefaultSmsAppStatusChanged(isDefault: Boolean) {
+        _isDefaultSmsApp.value = isDefault
+    }
+
+    fun onPermissionsResult(granted: Boolean) {
+        _hasPermissions.value = granted
+    }
+
+    fun checkPermissions(granted: Boolean) {
+        _hasPermissions.value = granted
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun loadConversations() {
         viewModelScope.launch {
-            repository.sendSms(address, body, subscriptionId)
+            _conversations.value = repository.getConversations()
+        }
+    }
+
+    fun loadMessagesForThread(threadId: Long) {
+        viewModelScope.launch {
+            _currentThreadMessages.value =
+                repository.getMessagesForThread(threadId)
+        }
+    }
+
+    fun sendSms(
+        address: String,
+        body: String,
+        subscriptionId: Int? = null
+    ) {
+        viewModelScope.launch {
+            if (subscriptionId == null) {
+                repository.sendSms(address, body)
+            } else {
+                repository.sendSms(address, body, subscriptionId)
+            }
+
             loadConversations()
         }
     }
