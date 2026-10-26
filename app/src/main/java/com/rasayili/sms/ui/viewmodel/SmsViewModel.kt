@@ -6,14 +6,17 @@ import androidx.lifecycle.viewModelScope
 import com.rasayili.sms.data.model.Conversation
 import com.rasayili.sms.data.model.SmsMessage
 import com.rasayili.sms.data.repository.SmsRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SmsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = SmsRepository(application.applicationContext)
+    private val repository =
+        SmsRepository(application.applicationContext)
 
     private val _conversations =
         MutableStateFlow<List<Conversation>>(emptyList())
@@ -55,14 +58,19 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadConversations() {
         viewModelScope.launch {
-            _conversations.value = repository.getConversations()
+            val result = withContext(Dispatchers.IO) {
+                repository.getConversations()
+            }
+            _conversations.value = result
         }
     }
 
     fun loadMessagesForThread(threadId: Long) {
         viewModelScope.launch {
-            _currentThreadMessages.value =
+            val result = withContext(Dispatchers.IO) {
                 repository.getMessagesForThread(threadId)
+            }
+            _currentThreadMessages.value = result
         }
     }
 
@@ -72,10 +80,16 @@ class SmsViewModel(application: Application) : AndroidViewModel(application) {
         subscriptionId: Int? = null
     ) {
         viewModelScope.launch {
-            if (subscriptionId == null) {
-                repository.sendSms(address, body)
-            } else {
-                repository.sendSms(address, body, subscriptionId)
+            withContext(Dispatchers.IO) {
+                if (subscriptionId == null) {
+                    repository.sendSms(address, body)
+                } else {
+                    repository.sendSms(
+                        address,
+                        body,
+                        subscriptionId
+                    )
+                }
             }
 
             loadConversations()
