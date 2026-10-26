@@ -17,41 +17,87 @@ import com.rasayili.sms.ui.viewmodel.SmsViewModel
 @Composable
 fun NewMessageScreen(
     viewModel: SmsViewModel,
+    initialRecipient: String = "",
     onNavigateBack: () -> Unit,
     onMessageSent: (Long, String) -> Unit
 ) {
-    var recipient by remember { mutableStateOf("") }
+    var recipient by remember(initialRecipient) {
+        mutableStateOf(initialRecipient)
+    }
     var messageText by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("رسالة خلوية جديدة", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = {
+                    Text(
+                        "رسالة خلوية جديدة",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "رجوع"
+                        )
                     }
                 }
             )
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
-            OutlinedTextField(value = recipient, onValueChange = { recipient = it }, label = { Text("إلى (رقم الهاتف):") }, modifier = Modifier.fillMaxWidth())
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            OutlinedTextField(
+                value = recipient,
+                onValueChange = { recipient = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("رقم الهاتف") },
+                placeholder = { Text("أدخل رقم المستلم") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(value = messageText, onValueChange = { messageText = it }, label = { Text("نص الرسالة:") }, modifier = Modifier.fillMaxWidth().weight(1f))
+
+            OutlinedTextField(
+                value = messageText,
+                onValueChange = { messageText = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                label = { Text("نص الرسالة") },
+                placeholder = { Text("اكتب رسالتك هنا...") },
+                shape = RoundedCornerShape(12.dp)
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
+
             Button(
                 onClick = {
-                    if (recipient.isNotBlank() && messageText.isNotBlank()) {
-                        viewModel.sendSms(recipient.trim(), messageText.trim())
+                    val number = recipient.trim()
+                    val body = messageText.trim()
+
+                    if (number.isNotEmpty() && body.isNotEmpty()) {
+                        viewModel.sendSms(number, body)
                         onNavigateBack()
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = recipient.isNotBlank() &&
+                          messageText.isNotBlank()
             ) {
-                Text("إرسال")
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = null
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
+                Text("إرسال الرسالة", fontSize = 16.sp)
             }
         }
     }

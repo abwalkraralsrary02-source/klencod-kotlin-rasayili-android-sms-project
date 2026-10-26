@@ -1,6 +1,6 @@
-
 package com.rasayili.sms.ui.navigation
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -27,13 +27,25 @@ fun AppNavGraph(
         composable("home") {
             HomeScreen(
                 viewModel = viewModel,
+
                 onNavigateToThread = { threadId, address ->
-                    navController.navigate("chat/$threadId/$address")
+                    navController.navigate(
+                        "chat/$threadId/${Uri.encode(address)}"
+                    )
                 },
+
                 onNavigateToNewMessage = {
                     navController.navigate("newMessage")
                 },
+
+                onNavigateToContact = { number ->
+                    navController.navigate(
+                        "newMessage?recipient=${Uri.encode(number)}"
+                    )
+                },
+
                 onRequestDefaultRole = onRequestDefaultRole,
+
                 onNavigateToSettings = {
                     navController.navigate("settings")
                 }
@@ -58,11 +70,13 @@ fun AppNavGraph(
                     type = NavType.StringType
                 }
             )
-        ) { backStackEntry ->
+        ) { entry ->
+
             val threadId =
-                backStackEntry.arguments?.getLong("threadId") ?: 0L
+                entry.arguments?.getLong("threadId") ?: 0L
+
             val address =
-                backStackEntry.arguments?.getString("address") ?: ""
+                Uri.decode(entry.arguments?.getString("address") ?: "")
 
             ChatDetailScreen(
                 threadId = threadId,
@@ -74,15 +88,31 @@ fun AppNavGraph(
             )
         }
 
-        composable("newMessage") {
+        composable(
+            route = "newMessage?recipient={recipient}",
+            arguments = listOf(
+                navArgument("recipient") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = ""
+                }
+            )
+        ) { entry ->
+
+            val recipient =
+                entry.arguments?.getString("recipient") ?: ""
+
             NewMessageScreen(
                 viewModel = viewModel,
+                initialRecipient = recipient,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
                 onMessageSent = { threadId, address ->
                     navController.popBackStack()
-                    navController.navigate("chat/$threadId/$address")
+                    navController.navigate(
+                        "chat/$threadId/${Uri.encode(address)}"
+                    )
                 }
             )
         }
