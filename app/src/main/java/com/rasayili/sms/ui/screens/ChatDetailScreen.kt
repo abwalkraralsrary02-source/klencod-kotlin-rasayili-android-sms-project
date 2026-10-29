@@ -5,29 +5,39 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rasayili.sms.ui.viewmodel.SmsViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-private val ChatBackground = Color(0xFF10151D)
+private val ChatBackground = Color(0xFF303030)
+private val ChatCard = Color(0xFF202020)
+private val ChatBlue = Color(0xFF3068C8)
 private val SentBubble = Color(0xFF183B59)
-private val ReceivedBubble = Color(0xFF242B35)
+private val ReceivedBubble = Color(0xFF202020)
 private val MessageBlue = Color(0xFF55B7FF)
-private val SecondaryText = Color(0xFFB5C0CC)
+private val SecondaryText = Color(0xFFBDBDBD)
+private val BubbleBorder = Color(0xFF555555)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,18 +67,40 @@ fun ChatDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = address,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(42.dp),
+                            shape = CircleShape,
                             color = Color.White
-                        )
-                        Text(
-                            text = "رسائل SMS",
-                            fontSize = 12.sp,
-                            color = SecondaryText
-                        )
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = ChatBlue,
+                                    modifier = Modifier.size(27.dp)
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = address,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "رسائل SMS",
+                                fontSize = 12.sp,
+                                color = Color(0xFFE0E9FF)
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -80,10 +112,25 @@ fun ChatDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = { }) {
+                        Icon(
+                            Icons.Default.Call,
+                            contentDescription = "اتصال",
+                            tint = Color.White
+                        )
+                    }
+                    IconButton(onClick = { }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "المزيد",
+                            tint = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1769AA),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = ChatBlue,
+                    titleContentColor = Color.White
                 )
             )
         }
@@ -101,77 +148,117 @@ fun ChatDetailScreen(
                 state = listState,
                 contentPadding = PaddingValues(
                     horizontal = 12.dp,
-                    vertical = 16.dp
-                )
+                    vertical = 14.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(
                     items = messages,
                     key = { it.id }
                 ) { message ->
-
-                    val messageDate = remember(message.timestamp) {
+                    val messageDay = remember(message.timestamp) {
                         SimpleDateFormat(
                             "yyyyMMdd",
                             Locale.getDefault()
                         ).format(Date(message.timestamp))
                     }
 
-                    val previousDate = messages
+                    val previousMessage = messages
                         .takeWhile { it.id != message.id }
                         .lastOrNull()
-                        ?.timestamp
-                        ?.let {
-                            SimpleDateFormat(
-                                "yyyyMMdd",
-                                Locale.getDefault()
-                            ).format(Date(it))
-                        }
 
-                    if (previousDate != messageDate) {
-                        Text(
-                            text = SimpleDateFormat(
-                                "dd MMMM yyyy",
-                                Locale.getDefault()
-                            ).format(Date(message.timestamp)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            color = SecondaryText,
-                            fontSize = 12.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                    val previousDay = previousMessage?.timestamp?.let {
+                        SimpleDateFormat(
+                            "yyyyMMdd",
+                            Locale.getDefault()
+                        ).format(Date(it))
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 3.dp),
-                        contentAlignment = if (message.isSent) {
-                            Alignment.CenterEnd
+                    if (previousDay != messageDay) {
+                        val calendar = Calendar.getInstance()
+                        val messageCalendar = Calendar.getInstance().apply {
+                            timeInMillis = message.timestamp
+                        }
+                        val yesterday = Calendar.getInstance().apply {
+                            add(Calendar.DAY_OF_YEAR, -1)
+                        }
+
+                        val dateLabel = when {
+                            calendar.get(Calendar.YEAR) ==
+                                messageCalendar.get(Calendar.YEAR) &&
+                                calendar.get(Calendar.DAY_OF_YEAR) ==
+                                messageCalendar.get(Calendar.DAY_OF_YEAR) ->
+                                "اليوم"
+
+                            yesterday.get(Calendar.YEAR) ==
+                                messageCalendar.get(Calendar.YEAR) &&
+                                yesterday.get(Calendar.DAY_OF_YEAR) ==
+                                messageCalendar.get(Calendar.DAY_OF_YEAR) ->
+                                "أمس"
+
+                            else -> SimpleDateFormat(
+                                "dd MMMM yyyy",
+                                Locale.getDefault()
+                            ).format(Date(message.timestamp))
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFF454545)
+                            ) {
+                                Text(
+                                    text = dateLabel,
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(
+                                        horizontal = 14.dp,
+                                        vertical = 6.dp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = if (message.isSent) {
+                            Arrangement.End
                         } else {
-                            Alignment.CenterStart
+                            Arrangement.Start
                         }
                     ) {
                         Surface(
+                            modifier = Modifier.widthIn(max = 300.dp),
                             shape = RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = 16.dp,
-                                bottomStart = if (message.isSent) 16.dp else 4.dp,
-                                bottomEnd = if (message.isSent) 4.dp else 16.dp
+                                topStart = 17.dp,
+                                topEnd = 17.dp,
+                                bottomStart = if (message.isSent) 17.dp else 5.dp,
+                                bottomEnd = if (message.isSent) 5.dp else 17.dp
                             ),
                             color = if (message.isSent) {
                                 SentBubble
                             } else {
                                 ReceivedBubble
                             },
-                            modifier = Modifier.widthIn(max = 300.dp)
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (message.isSent) {
+                                    ChatBlue
+                                } else {
+                                    BubbleBorder
+                                }
+                            )
                         ) {
                             Column(
                                 modifier = Modifier.padding(
-                                    start = 12.dp,
-                                    end = 12.dp,
-                                    top = 9.dp,
-                                    bottom = 6.dp
+                                    horizontal = 13.dp,
+                                    vertical = 9.dp
                                 )
                             ) {
                                 Text(
@@ -203,7 +290,7 @@ fun ChatDetailScreen(
             }
 
             Surface(
-                color = Color(0xFF1A222D),
+                color = ChatCard,
                 shadowElevation = 8.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -211,7 +298,7 @@ fun ChatDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                        .padding(horizontal = 10.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextField(
@@ -223,28 +310,26 @@ fun ChatDetailScreen(
                                 color = SecondaryText
                             )
                         },
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp),
-                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(25.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF293341),
-                            unfocusedContainerColor = Color(0xFF293341),
+                            focusedContainerColor = Color(0xFF303944),
+                            unfocusedContainerColor = Color(0xFF303944),
                             focusedBorderColor = MessageBlue,
                             unfocusedBorderColor = Color.Transparent,
                             cursorColor = MessageBlue
                         )
                     )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     IconButton(
                         onClick = {
                             if (inputText.isNotBlank()) {
-                                val messageToSend = inputText.trim()
-                                viewModel.sendSms(address, messageToSend)
+                                val textToSend = inputText.trim()
+                                viewModel.sendSms(address, textToSend)
                                 inputText = ""
 
                                 scope.launch {
@@ -260,7 +345,7 @@ fun ChatDetailScreen(
                             .size(48.dp)
                             .background(
                                 MessageBlue,
-                                RoundedCornerShape(50)
+                                CircleShape
                             )
                     ) {
                         Icon(
