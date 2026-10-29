@@ -1,5 +1,7 @@
 package com.rasayili.sms.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,8 +20,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +53,7 @@ fun ChatDetailScreen(
     var inputText by remember(threadId) { mutableStateOf("") }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LaunchedEffect(threadId) {
         viewModel.loadMessagesForThread(threadId)
@@ -113,13 +116,22 @@ fun ChatDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { }) {
+                    IconButton(
+                        onClick = {
+                            val dialIntent = Intent(
+                                Intent.ACTION_DIAL,
+                                Uri.parse("tel:${Uri.encode(address)}")
+                            )
+                            context.startActivity(dialIntent)
+                        }
+                    ) {
                         Icon(
                             Icons.Default.Call,
                             contentDescription = "اتصال",
                             tint = Color.White
                         )
                     }
+
                     IconButton(onClick = { }) {
                         Icon(
                             Icons.Default.MoreVert,
@@ -175,7 +187,7 @@ fun ChatDetailScreen(
                     }
 
                     if (previousDay != messageDay) {
-                        val calendar = Calendar.getInstance()
+                        val today = Calendar.getInstance()
                         val messageCalendar = Calendar.getInstance().apply {
                             timeInMillis = message.timestamp
                         }
@@ -184,9 +196,9 @@ fun ChatDetailScreen(
                         }
 
                         val dateLabel = when {
-                            calendar.get(Calendar.YEAR) ==
+                            today.get(Calendar.YEAR) ==
                                 messageCalendar.get(Calendar.YEAR) &&
-                                calendar.get(Calendar.DAY_OF_YEAR) ==
+                                today.get(Calendar.DAY_OF_YEAR) ==
                                 messageCalendar.get(Calendar.DAY_OF_YEAR) ->
                                 "اليوم"
 
